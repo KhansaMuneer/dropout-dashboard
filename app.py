@@ -21,6 +21,8 @@ from sklearn.metrics import calinski_harabasz_score, davies_bouldin_score, silho
 from sklearn.preprocessing import StandardScaler
 
 D = Path(__file__).parent / "data"
+if not D.exists():            # works when the data files sit next to app.py (flat upload to GitHub)
+    D = Path(__file__).parent
 THR = 0.30
 NAVY, TEAL, RED, GREEN, AMBER = "#1F3864", "#1C7C8C", "#B5413C", "#3B6D11", "#D98324"
 S2 = "Curricular units 2nd sem"

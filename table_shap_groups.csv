@@ -1,0 +1,6 @@
+Group,Sum of mean |SHAP|,Share %
+Academic performance,0.392,63.566
+Financial,0.082,13.354
+Demographic & family,0.075,12.079
+Admission & programme,0.051,8.188
+Macroeconomic,0.017,2.813

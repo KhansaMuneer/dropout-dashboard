@@ -1,0 +1,5 @@
+,Violations in real students,Students
+R1 approved <= enrolled,0,4424
+R2 approved <= evaluations,0,4424
+R3 grade > 0 only if approved > 0,0,4424
+R4 grade >= 10 when approved > 0,0,4424

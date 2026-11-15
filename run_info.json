@@ -1,0 +1,39 @@
+{
+  "python": "3.13.16",
+  "numpy": "2.1.3",
+  "pandas": "2.2.3",
+  "scikit-learn": "1.6.1",
+  "xgboost": "3.4.1",
+  "imbalanced-learn": "0.14.2",
+  "random_state": 42,
+  "eval_seed": 2024,
+  "n_folds": 5,
+  "quick_mode": false,
+  "threshold": 0.3,
+  "final_model": "Stacking Ensemble",
+  "best_params": {
+    "Logistic Regression": {
+      "C": 0.3
+    },
+    "Random Forest": {
+      "max_depth": null,
+      "max_features": 0.3,
+      "min_samples_leaf": 5,
+      "min_samples_split": 4,
+      "n_estimators": 334
+    },
+    "XGBoost": {
+      "colsample_bytree": 0.5481256377031607,
+      "learning_rate": 0.08052166473456371,
+      "max_depth": 4,
+      "min_child_weight": 1,
+      "n_estimators": 200,
+      "reg_lambda": 1.4298864947899526,
+      "subsample": 0.6147547789418131
+    },
+    "SVM": {
+      "C": 6.504856968981274,
+      "gamma": 0.006251373574521752
+    }
+  }
+}

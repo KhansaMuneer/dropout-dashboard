@@ -1,0 +1,5 @@
+Setting,Students with recourse,Students,Recourse rate %,95% CI
+"Original (3,000 samples, target P<0.5)",167,284,58.8,"[53.0, 64.4]"
+"Target aligned to threshold (P<0.30), 3,000 samples",167,284,58.8,"[53.0, 64.4]"
+"Target aligned, 10,000 samples",166,284,58.5,"[52.6, 64.0]"
+"Best-case feasible profile (constructive, proves existence)",201,284,70.8,"[65.2, 75.8]"

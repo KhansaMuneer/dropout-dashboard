@@ -1,0 +1,4 @@
+Method,Students,CFs generated,Validity % (P < thr),Feasible % (all CFs),Valid & feasible % (all CFs),Recourse rate % (students with >=1 valid & feasible CF),Valid CFs changing a non-actionable feature %,Valid CFs violating a data rule %,Mean features changed (valid CFs),Mean distance (valid CFs)
+Unconstrained (DiCE random),284,5580,36.1,1.6,0.6,9.5,66.0,73.3,1.8,1.4
+Unconstrained (DiCE genetic),284,5576,77.2,0.0,0.0,0.0,100.0,12.1,15.6,8.0
+Constrained (proposed),284,5098,36.8,73.4,30.1,58.8,0.0,18.2,2.0,1.1

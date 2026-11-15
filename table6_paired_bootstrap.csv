@@ -1,0 +1,11 @@
+Comparison,Metric,Mean diff,95% CI low,95% CI high,Significant
+Stacking vs Logistic Regression,ROC-AUC,0.0041,-0.004,0.0121,no
+Stacking vs Logistic Regression,Log-Loss,0.0047,-0.0104,0.0199,no
+Stacking vs Random Forest,ROC-AUC,0.0071,0.0011,0.0129,yes
+Stacking vs Random Forest,Log-Loss,-0.0112,-0.0238,0.0022,no
+Stacking vs XGBoost,ROC-AUC,0.0053,0.0009,0.0103,yes
+Stacking vs XGBoost,Log-Loss,0.0006,-0.0102,0.0104,no
+Stacking vs SVM,ROC-AUC,0.0036,-0.0029,0.0106,no
+Stacking vs SVM,Log-Loss,0.0003,-0.0085,0.0092,no
+Stacking vs Stacking + SMOTENC,ROC-AUC,0.005,-0.0007,0.011,no
+Stacking vs Stacking + SMOTENC,Log-Loss,-0.0127,-0.0293,0.0049,no

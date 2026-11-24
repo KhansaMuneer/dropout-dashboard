@@ -12,6 +12,7 @@ from pathlib import Path
 
 import joblib
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
 import shap
@@ -24,7 +25,7 @@ D = Path(__file__).parent / "data"
 if not D.exists():            # works when the data files sit next to app.py (flat upload to GitHub)
     D = Path(__file__).parent
 THR = 0.30
-NAVY, TEAL, RED, GREEN, AMBER = "#1F3864", "#1C7C8C", "#B5413C", "#3B6D11", "#D98324"
+NAVY, TEAL, RED, GREEN, AMBER = "#3B82F6", "#14B8A6", "#F43F5E", "#22C55E", "#F59E0B"
 S2 = "Curricular units 2nd sem"
 A, E, V, W, G = (f"{S2} ({s})" for s in ("approved", "enrolled", "evaluations", "without evaluations", "grade"))
 FEES, DEBT = "Tuition fees up to date", "Debtor"
@@ -32,14 +33,80 @@ ACTIONABLE = [A, V, W, G, FEES, DEBT]
 MODES = ["Constrained (proposed)", "Unconstrained (DiCE random)", "Unconstrained (DiCE genetic)"]
 
 st.set_page_config(page_title="Dropout Risk & Recourse Dashboard", page_icon="🎓", layout="wide")
+DARK = st.sidebar.toggle("🌙 Dark mode", value=True, key="dark")
+st.sidebar.markdown("**Dropout Risk & Recourse**  \nUse the tabs on the main page. Hover over any chart for exact values; "
+                    "click legend items to hide or show series.")
+if DARK:
+    BG, BG2, CARD, TXT, SUB, BORDER, ACC, ACC2 = "#0B1020", "#121A33", "#172044", "#E8ECF8", "#9FB0D6", "#26335F", "#38BDF8", "#A78BFA"
+else:
+    BG, BG2, CARD, TXT, SUB, BORDER, ACC, ACC2 = "#F5F8FF", "#FFFFFF", "#FFFFFF", "#14213D", "#5B6B8C", "#DCE4F5", "#2563EB", "#0EA5A4"
 st.markdown(f"""<style>
-h1,h2,h3{{color:{NAVY}}} .block-container{{padding-top:1.4rem}}
-div[data-testid="stMetric"]{{background:#EEF2F8;border-radius:10px;padding:10px 14px}}
-.note{{background:#EAF1FB;border-left:4px solid {NAVY};padding:10px 14px;border-radius:6px;font-size:0.92rem;margin:6px 0}}
-.warn{{background:#FFF4E5;border-left:4px solid {AMBER};padding:10px 14px;border-radius:6px;font-size:0.92rem;margin:6px 0}}
-.badge{{display:inline-block;padding:2px 10px;border-radius:12px;color:white;font-size:0.8rem;font-weight:600}}
-.card{{background:#EEF2F8;border-radius:10px;padding:10px 14px}}
+.stApp{{background:{BG};color:{TXT}}}
+[data-testid="stHeader"]{{background:transparent}}
+[data-testid="stSidebar"]{{background:{BG2}}}
+.stApp, .stApp p, .stApp li, .stApp label, .stApp span, .stApp div[data-testid="stMarkdownContainer"], .stApp h1, .stApp h2, .stApp h3, .stApp h4{{color:{TXT}}}
+.stApp [data-testid="stCaptionContainer"], .stApp small{{color:{SUB}}}
+.block-container{{padding-top:1rem;max-width:1400px}}
+div[data-testid="stMetric"]{{background:{CARD};border:1px solid {BORDER};border-radius:14px;padding:12px 16px;box-shadow:0 4px 14px rgba(0,0,0,.12)}}
+div[data-testid="stMetricValue"]{{color:{ACC}}}
+.hero{{background:linear-gradient(120deg,#1D4ED8 0%,#7C3AED 55%,#06B6D4 100%);border-radius:20px;padding:26px 30px;margin-bottom:14px;color:white;box-shadow:0 10px 30px rgba(37,99,235,.35)}}
+.hero h1{{color:white!important;margin:0 0 6px 0;font-size:2rem}}
+.hero p{{color:#EAF0FF!important;margin:0;font-size:0.95rem}}
+.pill{{display:inline-block;background:rgba(255,255,255,.18);border-radius:20px;padding:3px 12px;margin:10px 6px 0 0;font-size:0.8rem;color:white}}
+.note{{background:{CARD};border:1px solid {BORDER};border-left:5px solid {ACC};padding:12px 16px;border-radius:10px;font-size:0.92rem;margin:8px 0}}
+.warn{{background:{CARD};border:1px solid {BORDER};border-left:5px solid {AMBER};padding:12px 16px;border-radius:10px;font-size:0.92rem;margin:8px 0}}
+.why{{background:{CARD};border:1px dashed {BORDER};padding:8px 14px;border-radius:10px;font-size:0.86rem;color:{SUB};margin:2px 0 14px 0}}
+.why b{{color:{ACC2}}}
+.guide{{border-left:4px solid {ACC2};padding:4px 12px;margin:0 0 10px 0;color:{SUB};font-size:0.95rem}}
+.badge{{display:inline-block;padding:3px 12px;border-radius:12px;color:white;font-size:0.8rem;font-weight:600}}
+.card{{background:{CARD};border:1px solid {BORDER};border-radius:14px;padding:12px 16px;box-shadow:0 4px 14px rgba(0,0,0,.12)}}
+div[data-testid="stAlert"], div[data-testid="stAlertContainer"], div[data-testid="stAlert"] > div{{background:{CARD}!important;border-radius:10px}}
+div[data-testid="stAlert"]{{border:1px solid {BORDER};border-left:5px solid {GREEN}}}
+div[data-testid="stAlert"] *, div[data-testid="stAlertContainer"] *{{color:{TXT}!important}}
+div[data-testid="stMetricValue"]{{font-size:1.5rem}} div[data-testid="stMetricLabel"] p{{white-space:normal;font-size:0.8rem}}
+[data-testid="stFileUploaderDropzone"]{{background:{CARD}!important;border:1px dashed {ACC}!important;border-radius:12px}}
+[data-testid="stFileUploaderDropzone"] *{{color:{TXT}!important}}
+.stApp button[kind="secondary"], .stApp [data-testid="stBaseButton-secondary"]{{background:{CARD}!important;color:{TXT}!important;border:1px solid {ACC}!important;border-radius:10px}}
+.stApp [data-testid="stBaseButton-secondary"] *{{color:{TXT}!important}}
+.stTabs [data-baseweb="tab-list"]{{gap:6px;flex-wrap:wrap}}
+.stTabs [data-baseweb="tab"]{{background:{CARD};border:1px solid {BORDER};border-radius:12px;padding:6px 14px;height:auto}}
+.stTabs [aria-selected="true"]{{background:linear-gradient(120deg,#2563EB,#7C3AED);color:white!important}}
+.stTabs [aria-selected="true"] p{{color:white!important}}
+.stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"]{{display:none}}
+.stApp div[data-baseweb="select"] > div, .stApp input{{background:{CARD};color:{TXT}}}
+{"[data-testid=stDataFrame]{filter:invert(0.9) hue-rotate(180deg);border-radius:10px}" if DARK else "[data-testid=stDataFrame]{border:1px solid "+BORDER+";border-radius:10px}"}
 </style>""", unsafe_allow_html=True)
+
+PX = dict(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color=TXT, size=13),
+          margin=dict(l=10, r=10, t=50, b=10), legend=dict(bgcolor="rgba(0,0,0,0)"))
+GRID = BORDER
+
+
+def show(fig, h=360, key=None):
+    base = dict(PX)
+    if fig.layout.margin.l is not None:
+        base.pop("margin")
+    if fig.layout.legend.orientation is not None:
+        base.pop("legend")
+    fig.update_layout(height=h, **base)
+    fig.update_xaxes(gridcolor=GRID, zerolinecolor=GRID, automargin=True)
+    fig.update_yaxes(gridcolor=GRID, zerolinecolor=GRID, automargin=True)
+    st.plotly_chart(fig, width="stretch", key=key, theme=None, config={"displaylogo": False})
+
+
+def why(txt):
+    st.markdown(f"<div class='why'><b>What this shows:</b> {txt}</div>", unsafe_allow_html=True)
+
+
+def guide(txt):
+    st.markdown(f"<div class='guide'>{txt}</div>", unsafe_allow_html=True)
+
+
+def shot(path, caption, text):
+    """Static figure inside a framed card, with a plain-language explanation."""
+    st.image(str(path), width="stretch")
+    st.caption(caption)
+    why(text)
 
 
 # ------------------------------------------------------------------ loading
@@ -134,19 +201,22 @@ risk_df = pd.DataFrame({"Student (row ID)": X.index, "Dropout probability": np.r
 default_id = int(risk_df.sort_values("Dropout probability", ascending=False)["Student (row ID)"].iloc[0])
 
 # ------------------------------------------------------------------ header
-st.title("🎓 Dropout Risk and Counterfactual Recourse Dashboard")
-st.caption("From Prediction to Prescription: Counterfactual-Driven Dropout Risk Intervention Using a Stacking Ensemble and "
-           "Multi-Layer XAI  |  Khansa Munir (2024-ag-1876), MS CS, UAF  |  Supervisor: Ms Nabeela Ashraf")
+st.markdown("""<div class='hero'><h1>🎓 Dropout Risk &amp; Counterfactual Recourse Dashboard</h1>
+<p>From Prediction to Prescription: Counterfactual-Driven Dropout Risk Intervention Using a Stacking Ensemble and Multi-Layer XAI</p>
+<span class='pill'>4,424 students</span><span class='pill'>Stacking RF + XGB + SVM</span><span class='pill'>SHAP + LIME</span>
+<span class='pill'>Constrained counterfactuals</span><span class='pill'>Group recourse</span><br>
+<p style='margin-top:10px;font-size:0.82rem'>Khansa Munir (2024-ag-1876), MS CS, UAF &nbsp;|&nbsp; Supervisor: Ms Nabeela Ashraf</p></div>""", unsafe_allow_html=True)
 st.markdown("<div class='note'><b>Prototype for decision support.</b> Built on the anonymised UCI dataset (4,424 students). "
             "It displays the saved results of the full-data experiment; the final decision on any student rests with a teacher or "
             "advisor. It has not been evaluated with real users.</div>", unsafe_allow_html=True)
 
-tabs = st.tabs(["1 Data", "2 Model", "3 Explainability", "4 Student risk", "5 Individual CF", "6 Group CF",
-                "7 What-if", "8 Score new data", "9 Fairness & calibration", "10 Method quality", "11 Export"])
+tabs = st.tabs(["📊 Data", "📈 Model", "🔍 Explainability", "🧑‍🎓 Student risk", "🎯 Individual CF", "👥 Group CF",
+                "🎛️ What-if", "📤 Score new data", "⚖️ Fairness & calibration", "🧪 Method quality", "💾 Export"])
 
 # ================================================================== 1 DATA
 with tabs[0]:
     st.subheader("Data overview and preprocessing summary")
+    guide("Start here: what data the model learned from and how it was prepared.")
     c = st.columns(5)
     c[0].metric("Students", "4,424")
     c[1].metric("Predictors", f"{len(feat)}")
@@ -155,7 +225,8 @@ with tabs[0]:
     c[4].metric("Missing / duplicates", "0 / 0")
     l, r = st.columns([1, 1])
     with l:
-        st.image(str(D / "fig_class_distribution.png"), caption="Outcome classes (Dropout vs Graduate vs Enrolled)", width="stretch")
+        shot(D / "fig_class_distribution.png", "Outcome classes (Dropout vs Graduate vs Enrolled)",
+             "About one student in three drops out, so the classes are imbalanced. This is why recall and the 0.30 threshold matter more than plain accuracy.")
     with r:
         st.markdown("**Preprocessing summary**")
         st.dataframe(pd.DataFrame({"Step": ["Target", "Split", "Categorical (9)", "Binary (8)", "Numeric", "Imbalance", "Threshold", "Model"],
@@ -173,6 +244,7 @@ with tabs[0]:
 # ================================================================== 2 MODEL
 with tabs[1]:
     st.subheader("Model performance (test set, used once)")
+    guide("How well does the model detect students who will drop out? Pick an operating point and read the colour badges.")
     t5 = csv("table5_stacking_threshold_test.csv").set_index("Setting")
     t4 = csv("table4_final_test.csv").set_index("Model")
     sel_thr = st.radio("Operating point", ["Stacking @ 0.30", "Stacking @ 0.50"], horizontal=True)
@@ -188,13 +260,15 @@ with tabs[1]:
     cl, cr = st.columns([1, 1])
     with cl:
         cm = np.array([[row["TN"], row["FP"]], [row["FN"], row["TP"]]], dtype=int)
-        fig, ax = plt.subplots(figsize=(4.2, 3.6))
-        ax.imshow(cm, cmap="Blues")
-        for (i, j), v in np.ndenumerate(cm):
-            ax.text(j, i, f"{v}", ha="center", va="center", color="white" if v > cm.max() / 2 else "black", fontsize=14)
-        ax.set_xticks([0, 1], ["Non-dropout", "Dropout"]); ax.set_yticks([0, 1], ["Non-dropout", "Dropout"])
-        ax.set_xlabel("Predicted"); ax.set_ylabel("Actual"); ax.set_title(f"Confusion matrix ({sel_thr})")
-        st.pyplot(fig, clear_figure=True)
+        lbl = np.array([["True negatives", "False positives"], ["False negatives", "True positives"]])
+        fig = go.Figure(go.Heatmap(z=cm, x=["Predicted non-dropout", "Predicted dropout"], y=["Actual non-dropout", "Actual dropout"],
+                                   colorscale="Blues" if not DARK else "Tealgrn", showscale=False,
+                                   text=[[f"{lbl[i][j]}<br><b>{cm[i][j]}</b>" for j in range(2)] for i in range(2)], texttemplate="%{text}",
+                                   hovertemplate="%{y} / %{x}: %{z}<extra></extra>", textfont=dict(size=15)))
+        fig.update_yaxes(autorange="reversed"); fig.update_layout(title=f"Confusion matrix ({sel_thr})")
+        show(fig, 380)
+        why("Rows are what really happened, columns what the model predicted. Dark/strong cells on the diagonal are correct predictions; "
+            "the off-diagonal cells are the mistakes (false alarms and missed dropouts).")
     with cr:
         st.markdown("**All models (test set, 95% bootstrap CIs)**")
         st.dataframe(csv("table4_final_test.csv"), hide_index=True, width="stretch")
@@ -205,7 +279,8 @@ with tabs[1]:
         st.markdown("**Paired bootstrap comparison**")
         st.dataframe(csv("table6_paired_bootstrap.csv"), hide_index=True, width="stretch")
     with c2:
-        st.image(str(D / "fig_threshold_curve.png"), caption="Threshold selection from out-of-fold training predictions", width="stretch")
+        shot(D / "fig_threshold_curve.png", "Threshold selection from out-of-fold training predictions",
+             "Lowering the threshold catches more dropouts (higher recall) but raises false alarms. 0.30 was chosen on training data only, so the test set stays untouched.")
     st.markdown("**AutoML baseline (mljar-supervised, as used by the base paper) vs the stacking ensemble**")
     st.dataframe(csv("table_automl_vs_stacking.csv"), hide_index=True, width="stretch")
     st.dataframe(csv("table_automl_paired_difference.csv"), hide_index=True, width="stretch")
@@ -216,12 +291,28 @@ with tabs[1]:
 # ================================================================== 3 EXPLAINABILITY
 with tabs[2]:
     st.subheader("Global explanations (all 885 test students)")
+    guide("Why does the model predict dropout? These charts show which features matter overall.")
+    sg = csv("table_shap_global.csv").head(15).iloc[::-1]
+    sgr = csv("table_shap_groups.csv")
     a, b = st.columns(2)
-    a.image(str(D / "fig_shap_bar.png"), caption="Global SHAP importance (probability scale)", width="stretch")
-    b.image(str(D / "fig_shap_beeswarm.png"), caption="SHAP beeswarm (direction and spread of effects)", width="stretch")
+    with a:
+        fig = go.Figure(go.Bar(x=sg["Mean |SHAP|"] * 100, y=sg["Feature"].str.replace(S2 + " ", "2nd sem ").str.replace("Curricular units 1st sem", "1st sem"),
+                               orientation="h", marker=dict(color=sg["Mean |SHAP|"], colorscale="Plasma"),
+                               hovertemplate="%{y}: %{x:.1f} pp<extra></extra>"))
+        fig.update_layout(title="Top 15 features (mean |SHAP|, percentage points)"); fig.update_yaxes(automargin=True); show(fig, 520)
+        why("Longer bar = the feature changes the predicted dropout probability more, on average. Second-semester approved units dominate; fees and first-semester results follow.")
+    with b:
+        fig = go.Figure(go.Pie(labels=sgr["Group"], values=sgr["Share %"], hole=0.55, textinfo="label+percent",
+                               marker=dict(colors=["#3B82F6", "#14B8A6", "#A78BFA", "#F59E0B", "#F43F5E", "#22C55E"][:len(sgr)])))
+        fig.update_layout(title="Importance by feature group", showlegend=False); show(fig, 520)
+        why("The same importance grouped by theme. Academic performance carries most of the signal, financial factors come second.")
     a, b = st.columns(2)
-    a.image(str(D / "fig_shap_groups.png"), caption="Importance by feature group", width="stretch")
-    b.image(str(D / "fig_shap_vs_lime.png"), caption="SHAP vs LIME global ranking", width="stretch")
+    with a:
+        shot(D / "fig_shap_beeswarm.png", "SHAP beeswarm (direction and spread of effects)",
+             "Each dot is a student. Dots to the right push the predicted risk up, to the left push it down; colour shows whether the feature value is high or low.")
+    with b:
+        shot(D / "fig_shap_vs_lime.png", "SHAP vs LIME global ranking",
+             "Two independent explanation methods ranked the features. When both agree, the explanation is more trustworthy (the table below quantifies the agreement).")
     st.markdown("**SHAP–LIME agreement (multi-layer XAI check)**")
     st.dataframe(csv("table_consistency_summary.csv").rename(columns={"Unnamed: 0": "Measure"}), hide_index=True, width="stretch")
     st.dataframe(csv("table_shap_global.csv").head(15), hide_index=True, width="stretch")
@@ -229,6 +320,7 @@ with tabs[2]:
 # ================================================================== 4 STUDENT RISK
 with tabs[3]:
     st.subheader("Risk list")
+    guide("Find students at risk, then open one student's personal explanation below.")
     c = st.columns(3)
     only_flag = c[0].checkbox("Only flagged at-risk (≥ 0.30)", value=True)
     lo = c[1].slider("Minimum probability", 0.0, 1.0, 0.0, 0.05)
@@ -258,6 +350,7 @@ with tabs[3]:
         plt.figure(figsize=(7, 5))
         shap.plots.waterfall(expl[pos], max_display=10, show=False)
         st.pyplot(plt.gcf(), clear_figure=True)
+        why("Starts from the average risk and shows how each feature of this student pushes the prediction up (red) or down (blue) to the final probability.")
     with right:
         st.markdown("**Top 5 drivers (SHAP) with LIME check**")
         st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
@@ -268,6 +361,7 @@ with tabs[3]:
 # ================================================================== 5 INDIVIDUAL CF
 with tabs[4]:
     st.subheader("Individual counterfactual scenarios (flagged students)")
+    guide("For one at-risk student: what realistic changes would bring the risk below the 0.30 threshold?")
     flagged_ids = [ROW_IDS[i] for i in flagged_pos]
     ok_pos = [i for i in flagged_pos
               if (lambda t: t is not None and bool((t["valid"] & t["feasible"]).any()))(cfr["cf_store"].get((np.int64(i), MODES[0])))]
@@ -308,20 +402,25 @@ with tabs[4]:
                          width="stretch")
             g1, g2, g3 = st.columns(3)
             with g1:
-                fig, ax = plt.subplots(figsize=(4.4, 3.4))
-                ax.bar(["Original"] + names, [P[pos5]] + list(sel["P"]), color=[RED] + [TEAL] * len(names))
-                ax.axhline(THR, color="grey", ls="--"); ax.set_ylim(0, 1); ax.set_ylabel("Dropout probability")
-                ax.set_title("Probability before and after"); st.pyplot(fig, clear_figure=True)
+                fig = go.Figure(go.Bar(x=["Original"] + names, y=[P[pos5]] + list(sel["P"]), marker=dict(color=[RED] + [TEAL] * len(names)),
+                                       text=[f"{v_:.2f}" for v_ in [P[pos5]] + list(sel["P"])], textposition="outside"))
+                fig.add_hline(y=THR, line_dash="dash", line_color=AMBER, annotation_text="threshold 0.30")
+                fig.update_yaxes(range=[0, 1.05], title="Dropout probability"); fig.update_layout(title="Probability before and after")
+                show(fig, 340)
+                why("Red = today's risk. Teal bars = predicted risk after applying each counterfactual. Below the dashed line = no longer flagged.")
             with g2:
                 rng_ = {c: float(max(max_obs[c], 1)) for c in ACTIONABLE}
-                ang = np.linspace(0, 2 * np.pi, len(ACTIONABLE), endpoint=False).tolist(); ang += ang[:1]
-                fig = plt.figure(figsize=(4.4, 3.6)); ax = plt.subplot(111, polar=True)
+                cats = [c.replace(S2 + " ", "").replace("Tuition fees up to date", "Fees paid") for c in ACTIONABLE]
+                fig = go.Figure()
                 for n_, (_, r_) in zip(names, sel.iterrows()):
-                    v_ = [abs(float(r_[c]) - float(q[c])) / rng_[c] for c in ACTIONABLE]; v_ += v_[:1]
-                    ax.plot(ang, v_, label=n_); ax.fill(ang, v_, alpha=0.08)
-                ax.set_xticks(ang[:-1], [c.replace(S2 + " ", "2nd sem ").replace("Tuition fees up to date", "Fees paid") for c in ACTIONABLE], fontsize=6)
-                ax.set_title("Size of changes (share of feature range)", fontsize=9); ax.legend(fontsize=6, loc="upper right", bbox_to_anchor=(1.3, 1.1))
-                st.pyplot(fig, clear_figure=True)
+                    v_ = [abs(float(r_[c]) - float(q[c])) / rng_[c] for c in ACTIONABLE]
+                    fig.add_trace(go.Scatterpolar(r=v_ + v_[:1], theta=cats + cats[:1], fill="toself", opacity=0.45, name=n_))
+                fig.update_layout(title="Size of changes (share of feature range)", margin=dict(l=60, r=60, t=50, b=40),
+                                  legend=dict(orientation="h", y=-0.12, x=0.5, xanchor="center"),
+                                  polar=dict(bgcolor="rgba(0,0,0,0)", radialaxis=dict(gridcolor=GRID, showticklabels=False),
+                                             angularaxis=dict(gridcolor=GRID, tickfont=dict(size=10))))
+                show(fig, 340)
+                why("Each shape is one option. A bigger spike means that feature must change more. Small, thin shapes are easier for the student to achieve.")
             with g3:
                 pick = st.selectbox("Contribution of changes in", names, key="cf_pick")
                 r_ = sel.iloc[names.index(pick)]
@@ -332,10 +431,11 @@ with tabs[4]:
                     t_ = q.copy(); t_[c] = r_[c]
                     eff.append((c, float(P[pos5] - predict(pd.DataFrame([t_]))[0])))
                 eff.sort(key=lambda t: t[1])
-                fig, ax = plt.subplots(figsize=(4.6, 3.4))
-                ax.barh([e[0].replace(S2 + " ", "2nd sem ") for e in eff], [e[1] * 100 for e in eff], color=TEAL)
-                ax.set_xlabel("Risk reduction when applied alone (pp)"); ax.set_title(f"Effect of each change in {pick}", fontsize=9)
-                ax.tick_params(axis="y", labelsize=7); st.pyplot(fig, clear_figure=True)
+                fig = go.Figure(go.Bar(y=[e[0].replace(S2 + " ", "2nd sem ") for e in eff], x=[e[1] * 100 for e in eff], orientation="h",
+                                       marker=dict(color=TEAL), hovertemplate="%{y}: %{x:.1f} pp<extra></extra>"))
+                fig.update_layout(title=f"Effect of each change in {pick}"); fig.update_xaxes(title="Risk reduction alone (pp)")
+                show(fig, 340)
+                why("How much of the risk reduction each single change would deliver on its own (indicative only).")
             if mode == MODES[0]:
                 b_ = sel.iloc[0]
                 ch = [f"{c}: {q[c]:g} → {b_[c]:g}" for c in changed if c in ACTIONABLE and float(b_[c]) != float(q[c])]
@@ -346,6 +446,7 @@ with tabs[4]:
 # ================================================================== 6 GROUP CF
 with tabs[5]:
     st.subheader("Group counterfactuals (clusters of flagged students)")
+    guide("Instead of one student at a time: one shared action for a whole group of similar at-risk students.")
     Pn, Cn, P0g, gpos = grid["Pn"], grid["C"], grid["P0"], grid["pos"]
     Qg = Xte.iloc[gpos]
     ccols = model["numeric_cols"] + model["binary_cols"]
@@ -377,9 +478,10 @@ with tabs[5]:
     mem = np.where(lab == cl_id)[0]
     left, right = st.columns([1, 1])
     with left:
-        fig, ax = plt.subplots(figsize=(4.8, 3.2))
-        ax.bar([f"C{i}" for i in range(k)], sizes, color=[NAVY if i == cl_id else "#9AA7BD" for i in range(k)])
-        ax.set_ylabel("Flagged students"); ax.set_title(f"Cluster distribution (k = {k})"); st.pyplot(fig, clear_figure=True)
+        fig = go.Figure(go.Bar(x=[f"Cluster {i}" for i in range(k)], y=sizes, marker=dict(color=[ACC if i == cl_id else "#64748B" for i in range(k)]),
+                               text=sizes, textposition="outside"))
+        fig.update_layout(title=f"Cluster distribution (k = {k})"); fig.update_yaxes(title="Flagged students"); show(fig, 320)
+        why("How many flagged students fall in each group of similar students. The highlighted bar is the cluster analysed below.")
     with right:
         st.markdown("**Cluster validity (k = 2 to 8)**")
         st.dataframe(cs, hide_index=True, width="stretch")
@@ -422,15 +524,18 @@ with tabs[5]:
     a1, a2, a3 = st.columns(3)
     with a1:
         before = int((P0g[mem] >= THR).sum()); after = int((Pn[ai, mem] >= THR).sum())
-        fig, ax = plt.subplots(figsize=(4.2, 3.2))
-        ax.bar(["Before", "After"], [before, after], color=RED, label="Predicted dropout")
-        ax.bar(["Before", "After"], [len(mem) - before, len(mem) - after], bottom=[before, after], color=GREEN, alpha=0.45, label="Not flagged")
-        ax.legend(fontsize=7); ax.set_ylabel("Students"); ax.set_title("Predictions before / after"); st.pyplot(fig, clear_figure=True)
+        fig = go.Figure()
+        fig.add_bar(x=["Before", "After"], y=[before, after], name="Predicted dropout", marker_color=RED)
+        fig.add_bar(x=["Before", "After"], y=[len(mem) - before, len(mem) - after], name="Not flagged", marker_color=GREEN, opacity=0.6)
+        fig.update_layout(barmode="stack", title="Predictions before / after"); fig.update_yaxes(title="Students"); show(fig, 330)
+        why("The red part shrinks when the group action works: students who move below 0.30 turn green.")
     with a2:
-        fig, ax = plt.subplots(figsize=(4.4, 3.2))
-        ax.scatter(cost_all, sh_all * 100, s=10, color="#9AA7BD"); ax.scatter([cost_all[ai]], [sh_all[ai] * 100], s=60, color=RED, label="chosen")
-        ax.set_xlabel("Mean features changed per student"); ax.set_ylabel("% brought below 0.30"); ax.set_title("Cost vs effect (all tested actions)", fontsize=9)
-        ax.legend(fontsize=7); st.pyplot(fig, clear_figure=True)
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=cost_all, y=sh_all * 100, mode="markers", name="tested actions", marker=dict(size=7, color="#64748B", opacity=0.7)))
+        fig.add_trace(go.Scatter(x=[cost_all[ai]], y=[sh_all[ai] * 100], mode="markers", name="chosen", marker=dict(size=16, color=RED, line=dict(width=2, color="white"))))
+        fig.update_layout(title="Cost vs effect (all tested actions)"); fig.update_xaxes(title="Mean features changed per student")
+        fig.update_yaxes(title="% brought below 0.30"); show(fig, 330)
+        why("Every dot is one of the 600 tested group actions. Up and to the left is best: more students helped with fewer changes.")
     with a3:
         base_ = Qg.iloc[mem]
         st.markdown("**Cluster profile (mean values)**")
@@ -445,6 +550,7 @@ with tabs[5]:
 # ================================================================== 7 WHAT-IF
 with tabs[6]:
     st.subheader("What-if analysis (actionable features only)")
+    guide("Move the sliders to test your own scenario and watch the predicted risk change instantly.")
     rid6 = st.selectbox("Student (row ID)", ROW_IDS, index=ROW_IDS.index(default_id), key="wi_id")
     r0 = X.loc[rid6].copy()
     base_p = float(predict(X.loc[[rid6]])[0])
@@ -539,8 +645,11 @@ with tabs[7]:
 # ================================================================== 9 FAIRNESS & CALIBRATION
 with tabs[8]:
     st.subheader("Calibration")
+    guide("Can the predicted probabilities be trusted, and is the model fair across groups?")
     c1, c2 = st.columns([3, 2])
-    c1.image(str(D / "fig_calibration.png"), width="stretch")
+    with c1:
+        shot(D / "fig_calibration.png", "Reliability diagram",
+             "Points near the diagonal mean predicted probabilities match what really happened. Below the diagonal = the model under-estimates risk in that bin.")
     c2.dataframe(csv("table_calibration_summary.csv"), hide_index=True, width="stretch")
     c2.markdown("The model is reasonably well calibrated (Brier 0.085, ECE 0.034). A modest under-estimation appears in the 0.2–0.3 bin "
                 "(predicted 0.24, observed 0.32), just below the 0.30 threshold. No recalibration was applied.")
@@ -554,8 +663,10 @@ with tabs[8]:
 # ================================================================== 10 METHOD QUALITY
 with tabs[9]:
     st.subheader("Counterfactual quality (all 284 flagged students)")
+    guide("How good are the counterfactuals overall? Includes honest limitations.")
     st.dataframe(csv("table_cf_summary.csv"), hide_index=True, width="stretch")
-    st.image(str(D / "fig_cf_comparison.png"), width=760)
+    shot(D / "fig_cf_comparison.png", "Counterfactual methods compared",
+         "Constrained counterfactuals respect real-world rules and permitted actions; unconstrained ones can look better on paper but suggest changes that are not realistic.")
     c1, c2 = st.columns(2)
     with c1:
         st.markdown("**Data rules checked on all 4,424 real students**")

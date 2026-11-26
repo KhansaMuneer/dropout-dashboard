@@ -345,11 +345,24 @@ with tabs[3]:
     rows = [{"Feature": feat[j], "Student value": X.iloc[pos, j], "SHAP effect (pp)": round(sv[j] * 100, 1),
              "LIME weight": round(float(lime_w[pos, j]), 3),
              "Confirmed by LIME": "yes" if np.sign(lime_w[pos, j]) == np.sign(sv[j]) else "no"} for j in top]
-    left, right = st.columns([5, 4])
+    left, right = st.columns([4, 5])
     with left:
-        plt.figure(figsize=(7, 5))
-        shap.plots.waterfall(expl[pos], max_display=10, show=False)
-        st.pyplot(plt.gcf(), clear_figure=True)
+        base_v = float(np.ravel(expl.base_values[pos])[0]) * 100
+        order = np.argsort(-np.abs(sv))[:9]
+        rest = float(sv.sum() - sv[order].sum()) * 100
+        steps = [(f"{feat[j]} = {X.iloc[pos, j]}", float(sv[j]) * 100) for j in order] + [("All other features", rest)]
+        labels, starts, widths, colors, texts = ["Average risk"], [0.0], [base_v], ["#64748B"], [f"{base_v:.1f}%"]
+        cum = base_v
+        for nm, v in steps:
+            labels.append(nm); starts.append(cum); widths.append(v); colors.append(RED if v >= 0 else NAVY)
+            texts.append(f"{v:+.1f} pp"); cum += v
+        labels.append("Predicted risk"); starts.append(0.0); widths.append(cum); colors.append(TEAL); texts.append(f"{cum:.1f}%")
+        fig = go.Figure(go.Bar(orientation="h", y=labels, x=widths, base=starts, marker=dict(color=colors),
+                               text=texts, textposition="outside", cliponaxis=False, hoverinfo="skip"))
+        fig.update_yaxes(autorange="reversed")
+        fig.update_xaxes(range=[0, max(100.0, cum + 12)], title="Dropout risk (%)")
+        fig.update_layout(title="From average risk to this student's risk", margin=dict(l=10, r=70, t=50, b=10), showlegend=False)
+        show(fig, h=470, key="rep_waterfall")
         why("Starts from the average risk and shows how each feature of this student pushes the prediction up (red) or down (blue) to the final probability.")
     with right:
         st.markdown("**Top 5 drivers (SHAP) with LIME check**")
